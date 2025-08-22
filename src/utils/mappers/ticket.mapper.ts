@@ -60,6 +60,7 @@ export class TicketMapper extends BaseMapper {
     return this.mapToDto(TicketClassAvailabilityDto, {
       ticketClassId: ticketClass.id,
       ticketClassName: ticketClass.name,
+      description: ticketClass.description,
       price: Number(ticketClass.price),
       totalCount: ticketClass.totalCount,
       soldCount,

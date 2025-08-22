@@ -256,4 +256,34 @@ export class BookingService implements IBookingService {
             console.error('Failed to cleanup expired bookings:', error.message);
         }
     }
+
+    async updateBookingStatus(id: number, status: string): Promise<BookingResponseDto> {
+        try {
+            // Check if booking exists
+            const existingBooking = await this.bookingRepository.getBookingById(id);
+            if (!existingBooking) {
+                throw new BookingNotFoundException(id);
+            }
+
+            // Update the booking status
+            await this.bookingRepository.updateBookingStatus(id, status);
+
+            // Return updated booking with details
+            const updatedBooking = await this.bookingRepository.getBookingWithTickets(id);
+            if (!updatedBooking) {
+                throw new BookingNotFoundException(id);
+            }
+
+            return BookingMapper.mapToBookingResponseDto(updatedBooking);
+
+        } catch (error) {
+            if (error instanceof BookingNotFoundException) {
+                throw error;
+            }
+
+            // Handle database or other errors
+            const message = error.message || 'Unknown error occurred';
+            throw new BookingOperationFailedException('update status', message);
+        }
+    }
 }

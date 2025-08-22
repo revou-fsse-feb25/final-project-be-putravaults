@@ -2,9 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { EventRepository } from './event.repository';
 import { CreateEventDto } from './dtos/req/create.event.dto';
 import { UpdateEventDto } from './dtos/req/update.event.dto';
+import { CreateTicketClassDto } from './dtos/req/create-ticket-class.dto';
 import { EventResponseDto } from './dtos/res/event.response.dto';
 import { EventsListResponseDto } from './dtos/res/events-list.response.dto';
 import { TicketClassesListResponseDto } from './dtos/res/ticket-classes-list.response.dto';
+import { TicketClassResponseDto } from './dtos/res/ticket-class.response.dto';
 import { EventNotFoundException } from './exceptions/event-not-found.exception';
 import { EventCreationFailedException } from './exceptions/event-creation-failed.exception';
 import { EventUpdateFailedException } from './exceptions/event-update-failed.exception';
@@ -100,5 +102,26 @@ export class EventService implements IEventService {
 
         const ticketClasses = await this.eventRepository.getEventTicketClasses(eventId);
         return EventMapper.mapToTicketClassesListResponseDto(ticketClasses, eventId);
+    }
+
+    async createTicketClass(createTicketClassDto: CreateTicketClassDto): Promise<TicketClassResponseDto> {
+        try {
+            // Check if event exists
+            const existingEvent = await this.eventRepository.findEventById(createTicketClassDto.eventId);
+            if (!existingEvent) {
+                throw new EventNotFoundException(createTicketClassDto.eventId);
+            }
+
+            const ticketClass = await this.eventRepository.createTicketClass(createTicketClassDto);
+            return EventMapper.mapToTicketClassResponseDto(ticketClass);
+        } catch (error) {
+            if (error instanceof EventNotFoundException) {
+                throw error;
+            }
+            
+            // Handle database or other errors
+            const message = error.message || 'Unknown error occurred';
+            throw new EventCreationFailedException(message);
+        }
     }
 }

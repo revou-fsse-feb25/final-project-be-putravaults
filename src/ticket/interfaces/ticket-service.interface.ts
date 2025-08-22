@@ -1,5 +1,6 @@
 import { ReserveTicketsDto } from '../dtos/req/reserve-tickets.dto';
 import { UpdateTicketDto } from '../dtos/req/update-ticket.dto';
+import { CreateTicketDto } from '../dtos/req/create-ticket.dto';
 import { TicketResponseDto } from '../dtos/res/ticket.response.dto';
 import { TicketsListResponseDto } from '../dtos/res/tickets-list.response.dto';
 import { TicketAvailabilityResponseDto } from '../dtos/res/ticket-availability.response.dto';
@@ -16,6 +17,9 @@ export interface ITicketService {
   
   // Reserve tickets
   reserveTickets(reserveTicketsDto: ReserveTicketsDto): Promise<ReserveTicketsResponseDto>;
+  
+  // Create ticket
+  createTicket(createTicketDto: CreateTicketDto): Promise<TicketResponseDto>;
   
   // Update ticket
   updateTicket(id: number, updateTicketDto: UpdateTicketDto): Promise<TicketResponseDto>;

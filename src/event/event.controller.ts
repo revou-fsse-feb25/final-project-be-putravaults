@@ -1,9 +1,11 @@
 import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
 import { CreateEventDto } from './dtos/req/create.event.dto';
 import { UpdateEventDto } from './dtos/req/update.event.dto';
+import { CreateTicketClassDto } from './dtos/req/create-ticket-class.dto';
 import { EventResponseDto } from './dtos/res/event.response.dto';
 import { EventsListResponseDto } from './dtos/res/events-list.response.dto';
 import { TicketClassesListResponseDto } from './dtos/res/ticket-classes-list.response.dto';
+import { TicketClassResponseDto } from './dtos/res/ticket-class.response.dto';
 import { EventService } from './event.service';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -58,5 +60,12 @@ export class EventController {
     @Roles('ADMIN')
     deleteEvent(@Param('id', ParseIntPipe) id: number): Promise<void> {
         return this.eventService.deleteEvent(id);
+    }
+
+    @Post('ticket-class/create')
+    @UseGuards(RolesGuard)
+    @Roles('ADMIN')
+    createTicketClass(@Body() createTicketClassDto: CreateTicketClassDto): Promise<TicketClassResponseDto> {
+        return this.eventService.createTicketClass(createTicketClassDto);
     }
 }

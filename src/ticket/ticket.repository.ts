@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ReserveTicketsDto } from './dtos/req/reserve-tickets.dto';
 import { UpdateTicketDto } from './dtos/req/update-ticket.dto';
+import { CreateTicketDto } from './dtos/req/create-ticket.dto';
 import { PrismaService } from 'prisma/prisma.service';
 import { ITicketRepository } from './interfaces/ticket-repository.interface';
 
@@ -237,5 +238,39 @@ export class TicketRepository implements ITicketRepository {
                 bookingId: null,
             },
         });
+    }
+
+    async createTicket(createTicketDto: CreateTicketDto) {
+        const ticket = await this.prisma.ticket.create({
+            data: {
+                eventId: createTicketDto.eventId,
+                ticketClassId: createTicketDto.ticketClassId,
+                seatNumber: createTicketDto.seatNumber,
+                status: createTicketDto.status || 'AVAILABLE',
+            },
+            include: {
+                ticketClass: true,
+                event: {
+                    select: {
+                        id: true,
+                        name: true,
+                        date: true,
+                        location: true,
+                    }
+                }
+            },
+        });
+
+        // Update the totalCount in the ticket class
+        await this.prisma.ticketClass.update({
+            where: { id: createTicketDto.ticketClassId },
+            data: {
+                totalCount: {
+                    increment: 1,
+                },
+            },
+        });
+
+        return ticket;
     }
 }

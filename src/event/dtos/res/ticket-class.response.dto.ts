@@ -11,7 +11,7 @@ export class TicketClassResponseDto {
     name: string;
 
     @Expose()
-    description: string | null;
+    description?: string;
 
     @Expose()
     price: number;
@@ -23,7 +23,7 @@ export class TicketClassResponseDto {
     soldCount: number;
 
     @Expose()
-    availableCount: number; // Calculated field
+    availableCount: number;
 
     @Expose()
     createdAt: Date;

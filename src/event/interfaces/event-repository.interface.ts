@@ -1,5 +1,6 @@
 import { CreateEventDto } from '../dtos/req/create.event.dto';
 import { UpdateEventDto } from '../dtos/req/update.event.dto';
+import { CreateTicketClassDto } from '../dtos/req/create-ticket-class.dto';
 
 export interface IEventRepository {
   createEvent(createEventDto: CreateEventDto): Promise<any>;
@@ -9,4 +10,5 @@ export interface IEventRepository {
   findEventById(id: number): Promise<any | null>;
   deleteEvent(id: number): Promise<void>;
   getEventTicketClasses(eventId: number): Promise<any[]>;
+  createTicketClass(createTicketClassDto: CreateTicketClassDto): Promise<any>;
 }

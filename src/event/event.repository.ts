@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { CreateEventDto } from './dtos/req/create.event.dto';
 import { UpdateEventDto } from './dtos/req/update.event.dto';
+import { CreateTicketClassDto } from './dtos/req/create-ticket-class.dto';
 import { PrismaService } from 'prisma/prisma.service';
 import { IEventRepository } from './interfaces/event-repository.interface';
 
@@ -110,5 +111,19 @@ export class EventRepository implements IEventRepository {
             },
         });
         return ticketClasses;
+    }
+
+    async createTicketClass(createTicketClassDto: CreateTicketClassDto) {
+        const ticketClass = await this.prisma.ticketClass.create({
+            data: {
+                eventId: createTicketClassDto.eventId,
+                name: createTicketClassDto.name,
+                description: createTicketClassDto.description,
+                price: createTicketClassDto.price,
+                totalCount: 0, // Will be updated when tickets are created
+                soldCount: 0,
+            },
+        });
+        return ticketClass;
     }
 }

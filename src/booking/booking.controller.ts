@@ -51,6 +51,7 @@ export class BookingController {
         return this.bookingService.createBooking(createBookingDto);
     }
     
+    @Roles('USER', 'ADMIN')
     @Get('user/:userId')
     getBookingsByUserId(
         @Param('userId', ParseIntPipe) userId: number,
@@ -97,7 +98,7 @@ export class BookingController {
     ): Promise<BookingResponseDto> {
         return this.bookingService.updateBooking(id, updateBookingDto);
     }
-
+    @Roles('USER', 'ADMIN')
     @Post(':id/cancel')
     async cancelBooking(
         @Param('id', ParseIntPipe) id: number,
@@ -142,5 +143,13 @@ export class BookingController {
     @Roles('ADMIN')
     cleanupExpiredBookings(): Promise<void> {
         return this.bookingService.cleanupExpiredBookings();
+    }
+
+    @Patch(':id/update-status')
+    async updateBookingStatus(
+        @Param('id', ParseIntPipe) id: number,
+        @Body() updateStatusDto: { status: string }
+    ): Promise<BookingResponseDto> {
+        return this.bookingService.updateBookingStatus(id, updateStatusDto.status);
     }
 }

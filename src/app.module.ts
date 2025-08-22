@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { EventModule } from './event/event.module';
 import { TicketModule } from './ticket/ticket.module';
 import { BookingModule } from './booking/booking.module';
+import { PaymentModule } from './payment/payment.module';
 
 @Module({
   imports: [
@@ -19,7 +20,8 @@ import { BookingModule } from './booking/booking.module';
     AuthModule, 
     EventModule, 
     TicketModule, 
-    BookingModule
+    BookingModule,
+    PaymentModule
   ],
   controllers: [AppController],
   providers: [AppService],

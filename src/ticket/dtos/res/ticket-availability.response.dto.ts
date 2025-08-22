@@ -8,6 +8,9 @@ export class TicketClassAvailabilityDto {
     ticketClassName: string;
 
     @Expose()
+    description: string | null;
+
+    @Expose()
     price: number;
 
     @Expose()

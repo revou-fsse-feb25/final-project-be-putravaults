@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
 import { ReserveTicketsDto } from './dtos/req/reserve-tickets.dto';
 import { UpdateTicketDto } from './dtos/req/update-ticket.dto';
+import { CreateTicketDto } from './dtos/req/create-ticket.dto';
 import { TicketResponseDto } from './dtos/res/ticket.response.dto';
 import { TicketsListResponseDto } from './dtos/res/tickets-list.response.dto';
 import { TicketAvailabilityResponseDto } from './dtos/res/ticket-availability.response.dto';
@@ -9,6 +10,7 @@ import { TicketService } from './ticket.service';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 
+@UseGuards(RolesGuard)
 @Controller('ticket')
 export class TicketController {
     constructor(private readonly ticketService: TicketService) {}
@@ -59,9 +61,16 @@ export class TicketController {
     }
 
     @Post('release-expired')
-    @UseGuards(RolesGuard)
+
     @Roles('ADMIN')
     releaseExpiredReservations(): Promise<void> {
         return this.ticketService.releaseExpiredReservations();
+    }
+
+    @Post('create')
+    @UseGuards(RolesGuard)
+    @Roles('ADMIN')
+    createTicket(@Body() createTicketDto: CreateTicketDto): Promise<TicketResponseDto> {
+        return this.ticketService.createTicket(createTicketDto);
     }
 }

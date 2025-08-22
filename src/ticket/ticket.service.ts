@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { TicketRepository } from './ticket.repository';
 import { ReserveTicketsDto } from './dtos/req/reserve-tickets.dto';
 import { UpdateTicketDto } from './dtos/req/update-ticket.dto';
+import { CreateTicketDto } from './dtos/req/create-ticket.dto';
 import { TicketResponseDto } from './dtos/res/ticket.response.dto';
 import { TicketsListResponseDto } from './dtos/res/tickets-list.response.dto';
 import { TicketAvailabilityResponseDto } from './dtos/res/ticket-availability.response.dto';
@@ -151,6 +152,28 @@ export class TicketService implements ITicketService {
         } catch (error) {
             // Log error but don't throw - this is typically called by a scheduled job
             console.error('Failed to release expired reservations:', error.message);
+        }
+    }
+
+    async createTicket(createTicketDto: CreateTicketDto): Promise<TicketResponseDto> {
+        try {
+            // Verify event exists
+            const event = await this.eventRepository.findEventById(createTicketDto.eventId);
+            if (!event) {
+                throw new EventNotFoundException(createTicketDto.eventId);
+            }
+
+            const ticket = await this.ticketRepository.createTicket(createTicketDto);
+            return TicketMapper.mapToTicketResponseDto(ticket);
+
+        } catch (error) {
+            if (error instanceof EventNotFoundException) {
+                throw error;
+            }
+
+            // Handle database or other errors
+            const message = error.message || 'Unknown error occurred';
+            throw new TicketOperationFailedException('creation', message);
         }
     }
 }
