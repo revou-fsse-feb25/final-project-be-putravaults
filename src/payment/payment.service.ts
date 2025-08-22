@@ -3,7 +3,7 @@ import { CreatePaymentDto } from './dtos/req/create-payment.dto';
 
 @Injectable()
 export class PaymentService {
-    private readonly MIDTRANS_SERVER_KEY = process.env.MIDTRANS_SERVER_KEY || 'Mid-server-EzmRo7KWjCxVsAy6W9RNaVBi';
+    private readonly MIDTRANS_SERVER_KEY = process.env.MIDTRANS_SERVER_KEY
     private readonly MIDTRANS_API_URL = 'https://api.sandbox.midtrans.com/v2';
 
     async createPayment(createPaymentDto: CreatePaymentDto) {
