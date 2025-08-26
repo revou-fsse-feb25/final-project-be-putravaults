@@ -1,68 +1,71 @@
 import { Injectable } from '@nestjs/common';
 import { CreatePaymentDto } from './dtos/req/create-payment.dto';
+const midtransClient = require('midtrans-client');
 
 @Injectable()
 export class PaymentService {
-    private readonly MIDTRANS_SERVER_KEY = process.env.MIDTRANS_SERVER_KEY
+    private readonly MIDTRANS_SERVER_KEY = process.env.MIDTRANS_SERVER_KEY;
+    private readonly MIDTRANS_CLIENT_KEY = process.env.MIDTRANS_CLIENT_KEY;
     private readonly MIDTRANS_API_URL = 'https://api.sandbox.midtrans.com/v2';
+    
+    private readonly snap: any;
+
+    constructor() {
+        this.snap = new midtransClient.Snap({
+            isProduction: false,
+            serverKey: this.MIDTRANS_SERVER_KEY,
+            clientKey: this.MIDTRANS_CLIENT_KEY,
+        });
+    }
 
     async createPayment(createPaymentDto: CreatePaymentDto) {
         try {
-            console.log('Creating payment with data:', createPaymentDto);
+            // Validate that gross_amount matches the sum of item_details
+            const calculatedAmount = createPaymentDto.itemDetails.reduce((sum, item) => {
+                return sum + (item.price * item.quantity);
+            }, 0);
 
-            const response = await fetch(`${this.MIDTRANS_API_URL}/charge`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'Authorization': `Basic ${Buffer.from(this.MIDTRANS_SERVER_KEY + ':').toString('base64')}`,
-                },
-                body: JSON.stringify({
-                    payment_type: 'bank_transfer',
-                    bank_transfer: {
-                        bank: 'bca', // Default to BCA
-                    },
-                    transaction_details: {
-                        order_id: createPaymentDto.orderId,
-                        gross_amount: createPaymentDto.amount,
-                    },
-                    customer_details: {
-                        first_name: createPaymentDto.customerName,
-                        email: createPaymentDto.customerEmail,
-                    },
-                    item_details: createPaymentDto.itemDetails,
-                }),
-            });
-
-            console.log('Midtrans API response status:', response.status);
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('Midtrans API error response:', errorText);
-                throw new Error(`Payment creation failed: ${response.status} - ${errorText}`);
+            if (calculatedAmount !== createPaymentDto.amount) {
+                throw new Error(`Amount mismatch: calculated ${calculatedAmount}, provided ${createPaymentDto.amount}`);
             }
 
-            const result = await response.json();
-            console.log('Midtrans API success response:', result);
+            // Validate and truncate item names length (Midtrans limit is 50 characters)
+            for (const item of createPaymentDto.itemDetails) {
+                if (item.name && item.name.length > 50) {
+                    item.name = item.name.substring(0, 47) + '...';
+                }
+            }
 
-            return {
-                success: true,
-                data: result,
-                redirect_url: result.redirect_url,
-                va_numbers: result.va_numbers,
-                order_id: result.order_id,
-            };
+            const payment = {
+                transaction_details: {
+                    order_id: createPaymentDto.orderId,
+                    gross_amount: createPaymentDto.amount,
+                },
+                credit_card: {
+                    secure: true,
+                },
+                customer_details: {
+                    first_name: createPaymentDto.customerName,
+                    email: createPaymentDto.customerEmail,
+                },
+                item_details: createPaymentDto.itemDetails,
+            }
+
+            const token = await this.snap.createTransaction(payment);
+
+            if (!token || !token.token) {
+                throw new Error(`Payment creation failed: Invalid response from Midtrans`);
+            }
+
+            return { token: token.token };
 
         } catch (error) {
-            console.error('Error creating payment:', error);
             throw new Error(`Failed to create payment: ${error.message}`);
         }
     }
-
+    
     async checkPaymentStatus(orderId: string) {
         try {
-            console.log('Checking payment status for order:', orderId);
-
             const response = await fetch(`${this.MIDTRANS_API_URL}/${orderId}/status`, {
                 method: 'GET',
                 headers: {
@@ -71,16 +74,12 @@ export class PaymentService {
                 },
             });
 
-            console.log('Midtrans status check response status:', response.status);
-
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error('Midtrans status check error response:', errorText);
                 throw new Error(`Payment status check failed: ${response.status} - ${errorText}`);
             }
 
             const result = await response.json();
-            console.log('Midtrans status check success response:', result);
 
             return {
                 success: true,
@@ -95,7 +94,6 @@ export class PaymentService {
             };
 
         } catch (error) {
-            console.error('Error checking payment status:', error);
             throw new Error(`Failed to check payment status: ${error.message}`);
         }
     }

@@ -5,3 +5,7 @@ declare namespace NodeJS{
         jwtRefreshTokenKey:string
     }
 }
+
+declare module 'midtrans-client' {
+    export default Midtrans;
+}
