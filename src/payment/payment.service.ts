@@ -88,7 +88,12 @@ export class PaymentService {
       signature_key,
     } = paymentCallbackRequestDto;
 
-    const hash = crypto.createHash('sha512').update(`${order_id}${statusCode}${gross_amount}${process.env.MIDTRANS_SERVER_KEY}`).digest('hex');
+    const hash = crypto
+      .createHash('sha512')
+      .update(
+        `${order_id}${statusCode}${gross_amount}${process.env.MIDTRANS_SERVER_KEY}`,
+      )
+      .digest('hex');
 
     if (hash !== signature_key) {
       throw new Error('Missing or invalid midtrans signature key');
@@ -96,28 +101,35 @@ export class PaymentService {
 
     // Extract booking ID from order_id (ORDER-175 -> 175)
     const bookingId = parseInt(order_id.replace('ORDER-', ''));
-    
+
     if (isNaN(bookingId)) {
       throw new Error(`Invalid order_id format: ${order_id}`);
     }
 
     // Get booking with tickets to find associated ticket IDs
-    const booking = await this.bookingRepository.getBookingWithTickets(bookingId);
+    const booking =
+      await this.bookingRepository.getBookingWithTickets(bookingId);
     if (!booking) {
       throw new Error(`Booking not found for order_id: ${order_id}`);
     }
 
-    const ticketIds = booking.tickets.map(ticket => ticket.id);
+    const ticketIds = booking.tickets.map((ticket) => ticket.id);
 
     if (transaction_status === 'capture') {
       if (fraud_status === 'accept') {
         // Update booking status to CONFIRMED
-        await this.bookingRepository.updateBookingStatus(bookingId, 'CONFIRMED');
+        await this.bookingRepository.updateBookingStatus(
+          bookingId,
+          'CONFIRMED',
+        );
         // Update ticket status to SOLD
         await this.ticketRepository.updateTicketsStatus(ticketIds, 'SOLD');
       } else if (fraud_status === 'reject') {
         // Update booking status to CANCELLED
-        await this.bookingRepository.updateBookingStatus(bookingId, 'CANCELLED');
+        await this.bookingRepository.updateBookingStatus(
+          bookingId,
+          'CANCELLED',
+        );
         // Release tickets back to AVAILABLE
         await this.ticketRepository.updateTicketsStatus(ticketIds, 'AVAILABLE');
         await this.bookingRepository.releaseTicketsFromBooking(bookingId);
@@ -126,7 +138,11 @@ export class PaymentService {
       // Payment successful
       await this.bookingRepository.updateBookingStatus(bookingId, 'CONFIRMED');
       await this.ticketRepository.updateTicketsStatus(ticketIds, 'SOLD');
-    } else if (transaction_status === 'deny' || transaction_status === 'expire' || transaction_status === 'cancel') {
+    } else if (
+      transaction_status === 'deny' ||
+      transaction_status === 'expire' ||
+      transaction_status === 'cancel'
+    ) {
       // Payment failed
       await this.bookingRepository.updateBookingStatus(bookingId, 'CANCELLED');
       await this.ticketRepository.updateTicketsStatus(ticketIds, 'AVAILABLE');

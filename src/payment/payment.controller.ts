@@ -24,11 +24,12 @@ interface AuthenticatedRequest extends Request {
 
 
 @Controller('payment')
-@UseGuards(JwtGuard, RolesGuard)
+@UseGuards( RolesGuard)
 export class PaymentController {
     constructor(private readonly paymentService: PaymentService) {}
 
     @Post('create')
+    @UseGuards(JwtGuard)
     @Roles('USER', 'ADMIN')
     async createPayment(
         @Body() createPaymentDto: CreatePaymentDto,
@@ -48,6 +49,7 @@ export class PaymentController {
     }
 
     @Get('status/:orderId')
+    @UseGuards(JwtGuard)
     @Roles('USER', 'ADMIN')
     async checkPaymentStatus(
         @Param('orderId') orderId: string,
