@@ -81,7 +81,6 @@ export class PaymentService {
     const {
       order_id,
       transaction_status,
-      payment_type,
       fraud_status,
       status_code,
       gross_amount,
