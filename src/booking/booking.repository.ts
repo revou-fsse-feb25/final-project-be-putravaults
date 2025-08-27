@@ -9,10 +9,11 @@ import { IBookingRepository } from './interfaces/booking-repository.interface';
 export class BookingRepository implements IBookingRepository {
     constructor(private readonly prisma: PrismaService) {}
 
-    async createBooking(userId: number): Promise<Booking> {
+    async createBooking(userId: number, orderId?: string): Promise<Booking> {
         return this.prisma.booking.create({
             data: {
                 userId: userId,
+                orderId: orderId,
                 status: BookingStatus.PENDING,
             },
         });
@@ -126,10 +127,9 @@ export class BookingRepository implements IBookingRepository {
         });
     }
 
-    async getBookingByOrderId(orderId: number): Promise<any> {
-
+    async getBookingByOrderId(orderId: string): Promise<any> {
         return this.prisma.booking.findUnique({
-            where: { id: orderId },
+            where: { orderId: orderId },
             include: {
                 tickets: {
                     include: {

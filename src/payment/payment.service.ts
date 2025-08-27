@@ -25,8 +25,17 @@ export class PaymentService {
     });
   }
 
+  private generateOrderId(): string {
+    const timestamp = Date.now();
+    const randomPart = crypto.randomBytes(8).toString('hex');
+    return `ORDER-${timestamp}-${randomPart}`;
+  }
+
   async createPayment(createPaymentDto: CreatePaymentDto) {
     try {
+      // Generate order ID on backend
+      const orderId = this.generateOrderId();
+
       // Validate that gross_amount matches the sum of item_details
       const calculatedAmount = createPaymentDto.itemDetails.reduce(
         (sum, item) => {
@@ -50,7 +59,7 @@ export class PaymentService {
 
       const payment = {
         transaction_details: {
-          order_id: createPaymentDto.orderId,
+          order_id: orderId,
           gross_amount: createPaymentDto.amount,
         },
         credit_card: {
@@ -79,6 +88,9 @@ export class PaymentService {
 
   async createPaymentWithBookingData(createPaymentDto: CreatePaymentDto, bookingData: any) {
     try {
+      // Generate order ID on backend
+      const orderId = this.generateOrderId();
+
       // Validate that gross_amount matches the sum of item_details
       const calculatedAmount = createPaymentDto.itemDetails.reduce(
         (sum, item) => {
@@ -102,7 +114,7 @@ export class PaymentService {
 
       const payment = {
         transaction_details: {
-          order_id: createPaymentDto.orderId,
+          order_id: orderId,
           gross_amount: createPaymentDto.amount,
         },
         credit_card: {
@@ -162,14 +174,11 @@ export class PaymentService {
       }
     }
 
-    // Generate a unique order ID for this transaction
-    const uniqueOrderId = `${order_id}-${Date.now()}`;
-
     if (transaction_status === 'capture') {
       if (fraud_status === 'accept') {
         // Create booking and confirm it
         if (bookingData) {
-          await this.createBookingFromPaymentData(bookingData, uniqueOrderId, 'CONFIRMED');
+          await this.createBookingFromPaymentData(bookingData, order_id, 'CONFIRMED');
         }
       } else if (fraud_status === 'reject') {
         // Payment rejected - no booking created
@@ -178,7 +187,7 @@ export class PaymentService {
     } else if (transaction_status === 'settlement') {
       // Payment successful - create booking
       if (bookingData) {
-        await this.createBookingFromPaymentData(bookingData, uniqueOrderId, 'CONFIRMED');
+        await this.createBookingFromPaymentData(bookingData, order_id, 'CONFIRMED');
       }
     } else if (
       transaction_status === 'deny' ||
@@ -194,8 +203,8 @@ export class PaymentService {
 
   private async createBookingFromPaymentData(bookingData: any, orderId: string, status: string) {
     try {
-      // Create the booking
-      const booking = await this.bookingRepository.createBooking(bookingData.userId);
+      // Create the booking with orderId
+      const booking = await this.bookingRepository.createBooking(bookingData.userId, orderId);
 
       // Process each ticket booking item
       for (const ticketItem of bookingData.tickets) {

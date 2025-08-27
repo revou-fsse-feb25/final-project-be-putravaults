@@ -62,7 +62,7 @@ export class BookingService implements IBookingService {
             }
 
             // Create the booking
-            const booking = await this.bookingRepository.createBooking(createBookingDto.userId);
+            const booking = await this.bookingRepository.createBooking(createBookingDto.userId, createBookingDto.orderId);
 
             // Update tickets to reference this booking and mark as SOLD
             await this.bookingRepository.updateTicketsBookingId(ticketIds, booking.id);
@@ -96,7 +96,7 @@ export class BookingService implements IBookingService {
     }
 
     async getBookingById(id: number): Promise<BookingResponseDto> {
-        const booking = await this.bookingRepository.getBookingByOrderId(id);
+        const booking = await this.bookingRepository.getBookingWithTickets(id);
         if (!booking) {
             throw new BookingNotFoundException(id);
         }
