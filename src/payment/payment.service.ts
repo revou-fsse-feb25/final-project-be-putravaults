@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { CreatePaymentDto } from './dtos/req/create-payment.dto';
 import { PaymentCallbackRequestDto } from './dtos/req/payment-callback.dto';
 const midtransClient = require('midtrans-client');
-import crypto from 'crypto';
+import * as crypto from 'crypto';
 import { BookingRepository } from '../booking/booking.repository';
 import { TicketRepository } from '../ticket/ticket.repository';
 
