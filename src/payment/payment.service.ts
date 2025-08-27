@@ -173,14 +173,15 @@ export class PaymentService {
         console.error('Failed to parse booking data from custom_field1:', error);
       }
     }
-
     if (transaction_status === 'capture') {
       if (fraud_status === 'accept') {
         // Create booking and confirm it
         if (bookingData) {
           await this.createBookingFromPaymentData(bookingData, order_id, 'CONFIRMED');
+
         }
       } else if (fraud_status === 'reject') {
+        await this.bookingRepository.cancelBooking(orderId);
         // Payment rejected - no booking created
         console.log(`Payment rejected for order: ${order_id}`);
       }
@@ -194,11 +195,18 @@ export class PaymentService {
       transaction_status === 'expire' ||
       transaction_status === 'cancel'
     ) {
-      // Payment failed - no booking created
+      this.bookingRepository.cancelBooking(orderId);
       console.log(`Payment failed for order: ${order_id}`);
+    } else if (transaction_status === 'pending') {
+      const existingBooking = await this.bookingRepository.getBookingByOrderId(orderId);
+      //create booking if not exist
+      if (!existingBooking) {
+        await this.bookingRepository.createBooking(orderId);
+        console.log(`Created booking for pending order: ${order_id}`);
+      }
     }
 
-    return;
+    return console.log('Payment callback handled successfully');
   }
 
   private async createBookingFromPaymentData(bookingData: any, orderId: string, status: string) {
