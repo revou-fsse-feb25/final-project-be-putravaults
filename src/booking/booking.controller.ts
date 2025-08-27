@@ -69,7 +69,8 @@ export class BookingController {
         
         return this.bookingService.getBookingsByUserId(userId);
     }
-
+    
+    @Roles('USER', 'ADMIN')
     @Get(':id')
     async getBookingById(
         @Param('id', ParseIntPipe) id: number,
