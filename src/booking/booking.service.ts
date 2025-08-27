@@ -62,7 +62,7 @@ export class BookingService implements IBookingService {
             }
 
             // Create the booking
-            const booking = await this.bookingRepository.createBooking(createBookingDto.userId);
+            const booking = await this.bookingRepository.createBooking(createBookingDto.userId, createBookingDto.orderId);
 
             // Update tickets to reference this booking and mark as SOLD
             await this.bookingRepository.updateTicketsBookingId(ticketIds, booking.id);

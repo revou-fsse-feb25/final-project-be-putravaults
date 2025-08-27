@@ -16,9 +16,6 @@ export class ItemDetailDto {
 }
 
 export class CreatePaymentDto {
-    @IsString()
-    orderId: string;
-
     @IsNumber()
     amount: number;
 

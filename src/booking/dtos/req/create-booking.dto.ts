@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsArray, ArrayMinSize, ValidateNested } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsArray, ArrayMinSize, ValidateNested, IsOptional, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class TicketBookingItem {
@@ -15,6 +15,10 @@ export class CreateBookingDto {
     @IsNotEmpty()
     @IsNumber()
     userId: number;
+
+    @IsOptional()
+    @IsString()
+    orderId?: string;
 
     @IsNotEmpty()
     @IsArray()
