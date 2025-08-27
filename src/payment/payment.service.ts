@@ -163,33 +163,44 @@ export class PaymentService {
     }
 
     // Generate a unique order ID for this transaction
-    const uniqueOrderId = `${order_id}-${Date.now()}`;
+    const orderId = parseInt(order_id);
 
     if (transaction_status === 'capture') {
       if (fraud_status === 'accept') {
         // Create booking and confirm it
         if (bookingData) {
-          await this.createBookingFromPaymentData(bookingData, uniqueOrderId, 'CONFIRMED');
+          await this.bookingRepository.updateBookingStatus(
+            orderId,
+            'CONFIRMED',
+          );
         }
       } else if (fraud_status === 'reject') {
+        await this.bookingRepository.cancelBooking(orderId);
         // Payment rejected - no booking created
         console.log(`Payment rejected for order: ${order_id}`);
       }
     } else if (transaction_status === 'settlement') {
       // Payment successful - create booking
       if (bookingData) {
-        await this.createBookingFromPaymentData(bookingData, uniqueOrderId, 'CONFIRMED');
+        await this.bookingRepository.updateBookingStatus(orderId, 'CONFIRMED');
       }
     } else if (
       transaction_status === 'deny' ||
       transaction_status === 'expire' ||
       transaction_status === 'cancel'
     ) {
-      // Payment failed - no booking created
+      this.bookingRepository.cancelBooking(parseInt(order_id));
       console.log(`Payment failed for order: ${order_id}`);
+    } else if (transaction_status === 'pending') {
+      const existingBooking = await this.bookingRepository.getBookingByOrderId(orderId);
+      //create booking if not exist
+      if (!existingBooking) {
+        await this.bookingRepository.createBooking(orderId);
+        console.log(`Created booking for pending order: ${order_id}`);
+      }
     }
 
-    return;
+    return console.log('Payment callback handled successfully');
   }
 
   private async createBookingFromPaymentData(bookingData: any, orderId: string, status: string) {
