@@ -83,7 +83,7 @@ export class PaymentService {
       transaction_status,
       payment_type,
       fraud_status,
-      statusCode,
+      status_code,
       gross_amount,
       signature_key,
     } = paymentCallbackRequestDto;
@@ -91,7 +91,7 @@ export class PaymentService {
     const hash = crypto
       .createHash('sha512')
       .update(
-        `${order_id}${statusCode}${gross_amount}${process.env.MIDTRANS_SERVER_KEY}`,
+        `${order_id}${status_code}${gross_amount}${process.env.MIDTRANS_SERVER_KEY}`,
       )
       .digest('hex');
 
