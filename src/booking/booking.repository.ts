@@ -125,4 +125,27 @@ export class BookingRepository implements IBookingRepository {
             },
         });
     }
+
+    async getBookingByOrderId(orderId: number): Promise<any> {
+
+        return this.prisma.booking.findUnique({
+            where: { id: orderId },
+            include: {
+                tickets: {
+                    include: {
+                        ticketClass: true,
+                        event: true,
+                    },
+                },
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                    },
+                },
+            },
+        });
+    }
+    
 }

@@ -96,7 +96,7 @@ export class BookingService implements IBookingService {
     }
 
     async getBookingById(id: number): Promise<BookingResponseDto> {
-        const booking = await this.bookingRepository.getBookingWithTickets(id);
+        const booking = await this.bookingRepository.getBookingByOrderId(id);
         if (!booking) {
             throw new BookingNotFoundException(id);
         }
