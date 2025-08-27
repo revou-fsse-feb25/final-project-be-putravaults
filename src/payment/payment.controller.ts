@@ -12,6 +12,7 @@ import { CreatePaymentDto } from './dtos/req/create-payment.dto';
 import { JwtGuard } from '../auth/guards/jwt.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { PaymentCallbackRequestDto } from './dtos/req/payment-callback.dto';
 
 interface AuthenticatedRequest extends Request {
     user: {
@@ -20,6 +21,7 @@ interface AuthenticatedRequest extends Request {
         role: string;
     };
 }
+
 
 @Controller('payment')
 @UseGuards(JwtGuard, RolesGuard)
@@ -38,6 +40,11 @@ export class PaymentController {
         }
         
         return this.paymentService.createPayment(createPaymentDto);
+    }
+    
+    @Post('callback')
+    async handleCallback(@Body() paymentCallbackRequestDto: PaymentCallbackRequestDto) {
+        return this.paymentService.handleCallback(paymentCallbackRequestDto);
     }
 
     @Get('status/:orderId')

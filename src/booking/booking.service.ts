@@ -69,7 +69,7 @@ export class BookingService implements IBookingService {
             
             // Update ticket status to SOLD
             for (const ticketId of ticketIds) {
-                await this.ticketRepository.updateTicket(ticketId, { status: 'SOLD' as any });
+                await this.ticketRepository.updateTicket(ticketId, { status: 'RESERVED' as any });
             }
 
             // Return the booking with ticket details

@@ -23,7 +23,7 @@ export class TicketService implements ITicketService {
         private readonly ticketRepository: TicketRepository,
         private readonly eventRepository: EventRepository,
     ) {}
-
+    
     async getTicketsByEvent(eventId: number): Promise<TicketsListResponseDto> {
         // Verify event exists
         const event = await this.eventRepository.findEventById(eventId);
