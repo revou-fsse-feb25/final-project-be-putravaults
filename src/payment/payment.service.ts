@@ -77,6 +77,59 @@ export class PaymentService {
     }
   }
 
+  async createPaymentWithBookingData(createPaymentDto: CreatePaymentDto, bookingData: any) {
+    try {
+      // Validate that gross_amount matches the sum of item_details
+      const calculatedAmount = createPaymentDto.itemDetails.reduce(
+        (sum, item) => {
+          return sum + item.price * item.quantity;
+        },
+        0,
+      );
+
+      if (calculatedAmount !== createPaymentDto.amount) {
+        throw new Error(
+          `Amount mismatch: calculated ${calculatedAmount}, provided ${createPaymentDto.amount}`,
+        );
+      }
+
+      // Validate and truncate item names length (Midtrans limit is 50 characters)
+      for (const item of createPaymentDto.itemDetails) {
+        if (item.name && item.name.length > 50) {
+          item.name = item.name.substring(0, 47) + '...';
+        }
+      }
+
+      const payment = {
+        transaction_details: {
+          order_id: createPaymentDto.orderId,
+          gross_amount: createPaymentDto.amount,
+        },
+        credit_card: {
+          secure: true,
+        },
+        customer_details: {
+          first_name: createPaymentDto.customerName,
+          email: createPaymentDto.customerEmail,
+        },
+        item_details: createPaymentDto.itemDetails,
+        custom_field1: JSON.stringify(bookingData), // Store booking data for later processing
+      };
+
+      const token = await this.snap.createTransaction(payment);
+
+      if (!token || !token.token) {
+        throw new Error(
+          `Payment creation failed: Invalid response from Midtrans`,
+        );
+      }
+
+      return { token: token.token };
+    } catch (error) {
+      throw new Error(`Failed to create payment: ${error.message}`);
+    }
+  }
+
   async handleCallback(paymentCallbackRequestDto: PaymentCallbackRequestDto) {
     const {
       order_id,
@@ -85,6 +138,7 @@ export class PaymentService {
       status_code,
       gross_amount,
       signature_key,
+      custom_field1,
     } = paymentCallbackRequestDto;
 
     const hash = crypto
@@ -98,57 +152,85 @@ export class PaymentService {
       throw new Error('Missing or invalid midtrans signature key');
     }
 
-    // Extract booking ID from order_id (ORDER-175 -> 175)
-    const bookingId = parseInt(order_id.replace('ORDER-', ''));
-
-    if (isNaN(bookingId)) {
-      throw new Error(`Invalid order_id format: ${order_id}`);
+    // Parse booking data from custom_field1
+    let bookingData = null;
+    if (custom_field1) {
+      try {
+        bookingData = JSON.parse(custom_field1);
+      } catch (error) {
+        console.error('Failed to parse booking data from custom_field1:', error);
+      }
     }
 
-    // Get booking with tickets to find associated ticket IDs
-    const booking =
-      await this.bookingRepository.getBookingWithTickets(bookingId);
-    if (!booking) {
-      throw new Error(`Booking not found for order_id: ${order_id}`);
-    }
-
-    const ticketIds = booking.tickets.map((ticket) => ticket.id);
+    // Generate a unique order ID for this transaction
+    const uniqueOrderId = `${order_id}-${Date.now()}`;
 
     if (transaction_status === 'capture') {
       if (fraud_status === 'accept') {
-        // Update booking status to CONFIRMED
-        await this.bookingRepository.updateBookingStatus(
-          bookingId,
-          'CONFIRMED',
-        );
-        // Update ticket status to SOLD
-        await this.ticketRepository.updateTicketsStatus(ticketIds, 'SOLD');
+        // Create booking and confirm it
+        if (bookingData) {
+          await this.createBookingFromPaymentData(bookingData, uniqueOrderId, 'CONFIRMED');
+        }
       } else if (fraud_status === 'reject') {
-        // Update booking status to CANCELLED
-        await this.bookingRepository.updateBookingStatus(
-          bookingId,
-          'CANCELLED',
-        );
-        // Release tickets back to AVAILABLE
-        await this.ticketRepository.updateTicketsStatus(ticketIds, 'AVAILABLE');
-        await this.bookingRepository.releaseTicketsFromBooking(bookingId);
+        // Payment rejected - no booking created
+        console.log(`Payment rejected for order: ${order_id}`);
       }
     } else if (transaction_status === 'settlement') {
-      // Payment successful
-      await this.bookingRepository.updateBookingStatus(bookingId, 'CONFIRMED');
-      await this.ticketRepository.updateTicketsStatus(ticketIds, 'SOLD');
+      // Payment successful - create booking
+      if (bookingData) {
+        await this.createBookingFromPaymentData(bookingData, uniqueOrderId, 'CONFIRMED');
+      }
     } else if (
       transaction_status === 'deny' ||
       transaction_status === 'expire' ||
       transaction_status === 'cancel'
     ) {
-      // Payment failed
-      await this.bookingRepository.updateBookingStatus(bookingId, 'CANCELLED');
-      await this.ticketRepository.updateTicketsStatus(ticketIds, 'AVAILABLE');
-      await this.bookingRepository.releaseTicketsFromBooking(bookingId);
+      // Payment failed - no booking created
+      console.log(`Payment failed for order: ${order_id}`);
     }
 
     return;
+  }
+
+  private async createBookingFromPaymentData(bookingData: any, orderId: string, status: string) {
+    try {
+      // Create the booking
+      const booking = await this.bookingRepository.createBooking(bookingData.userId);
+
+      // Process each ticket booking item
+      for (const ticketItem of bookingData.tickets) {
+        // Get available tickets for this ticket class
+        const availableTickets = await this.ticketRepository.getAvailableTicketsByTicketClass(
+          ticketItem.ticketClassId
+        );
+
+        // Check if we have enough tickets
+        if (availableTickets.length < ticketItem.quantity) {
+          throw new Error(
+            `Insufficient tickets for ticket class ${ticketItem.ticketClassId}. Available: ${availableTickets.length}, Requested: ${ticketItem.quantity}`
+          );
+        }
+
+        // Take the first N available tickets
+        const ticketsToBook = availableTickets.slice(0, ticketItem.quantity);
+        const ticketIds = ticketsToBook.map(ticket => ticket.id);
+
+        // Update tickets to reference this booking
+        await this.bookingRepository.updateTicketsBookingId(ticketIds, booking.id);
+        
+        // Update ticket status based on payment status
+        const ticketStatus = status === 'CONFIRMED' ? 'SOLD' : 'AVAILABLE';
+        await this.ticketRepository.updateTicketsStatus(ticketIds, ticketStatus);
+      }
+
+      // Update booking status
+      await this.bookingRepository.updateBookingStatus(booking.id, status);
+
+      console.log(`Booking created successfully: ${booking.id} for order: ${orderId}`);
+    } catch (error) {
+      console.error('Failed to create booking from payment data:', error);
+      throw error;
+    }
   }
 
   async checkPaymentStatus(orderId: string) {

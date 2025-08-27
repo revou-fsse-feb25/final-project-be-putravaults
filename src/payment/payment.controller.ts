@@ -42,6 +42,21 @@ export class PaymentController {
         
         return this.paymentService.createPayment(createPaymentDto);
     }
+
+    @Post('create-with-booking')
+    @UseGuards(JwtGuard)
+    @Roles('USER', 'ADMIN')
+    async createPaymentWithBooking(
+        @Body() body: { paymentData: CreatePaymentDto; bookingData: any },
+        @Request() req: AuthenticatedRequest
+    ) {
+        // Ensure user is authenticated
+        if (!req.user) {
+            throw new Error('User not authenticated');
+        }
+        
+        return this.paymentService.createPaymentWithBookingData(body.paymentData, body.bookingData);
+    }
     
     @Post('callback')
     async handleCallback(@Body() paymentCallbackRequestDto: PaymentCallbackRequestDto) {

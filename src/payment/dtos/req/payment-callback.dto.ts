@@ -93,4 +93,8 @@ export class PaymentCallbackRequestDto {
     @IsString()
     @IsNotEmpty()
     currency: string;
+
+    @IsString()
+    @IsOptional()
+    custom_field1: string;
 }
