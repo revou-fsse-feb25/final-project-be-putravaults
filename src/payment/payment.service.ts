@@ -162,8 +162,11 @@ export class PaymentService {
       }
     }
 
-    // Generate a unique order ID for this transaction
-    const orderId = parseInt(order_id);
+    // Normalize order_id from FE (e.g., "ORDER-1234567890") to integer
+    const orderId = parseInt(String(order_id).replace(/\D/g, ''), 10);
+    if (Number.isNaN(orderId)) {
+      throw new Error(`Invalid order_id format: ${order_id}`);
+    }
 
     if (transaction_status === 'capture') {
       if (fraud_status === 'accept') {
@@ -189,7 +192,7 @@ export class PaymentService {
       transaction_status === 'expire' ||
       transaction_status === 'cancel'
     ) {
-      this.bookingRepository.cancelBooking(parseInt(order_id));
+      this.bookingRepository.cancelBooking(orderId);
       console.log(`Payment failed for order: ${order_id}`);
     } else if (transaction_status === 'pending') {
       const existingBooking = await this.bookingRepository.getBookingByOrderId(orderId);
