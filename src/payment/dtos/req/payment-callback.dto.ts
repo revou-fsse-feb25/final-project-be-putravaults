@@ -96,5 +96,5 @@ export class PaymentCallbackRequestDto {
 
     @IsString()
     @IsOptional()
-    booking_details: string;
+    custom_field1: string;
 }

@@ -128,7 +128,7 @@ export class PaymentService {
           email: createPaymentDto.customerEmail,
         },
         item_details: createPaymentDto.itemDetails,
-        booking_details: JSON.stringify(bookingData), // Store booking data for later processing
+        custom_field1: JSON.stringify(bookingData), // Store booking data for later processing
       };
 
       const token = await this.snap.createTransaction(payment);
@@ -153,9 +153,10 @@ export class PaymentService {
       status_code,
       gross_amount,
       signature_key,
-      booking_details,
+      custom_field1,
     } = paymentCallbackRequestDto;
 
+    const booking_details = custom_field1
     const paymentId = order_id;
 
     const hash = crypto
