@@ -21,7 +21,7 @@ A robust and scalable backend API for a concert ticket booking system built with
 
 ## 🎯 Overview
 
-Concerto Backend is a comprehensive REST API designed to handle concert ticket booking operations. It provides secure authentication, event management, ticket reservation, and booking functionality with role-based access control.
+Concerto Backend is a comprehensive REST API for a concert ticket booking platform. It provides secure authentication, event management, ticket reservation/booking, and integrates with Midtrans Snap for payments. It exposes REST endpoints consumed by the Next.js frontend in `concert-ticket-booking`.
 
 ### Key Capabilities
 
@@ -29,6 +29,7 @@ Concerto Backend is a comprehensive REST API designed to handle concert ticket b
 - **Event Management**: CRUD operations for concert events with image support
 - **Ticket System**: Multi-class ticket management with real-time availability
 - **Booking System**: Secure ticket reservation and booking confirmation
+- **Payments (Midtrans)**: Snap token creation, payment notifications (callbacks), and status checks
 - **Admin Dashboard**: Administrative tools for event and user management
 
 ## ✨ Features
@@ -64,6 +65,12 @@ Concerto Backend is a comprehensive REST API designed to handle concert ticket b
 - CORS configuration
 - Rate limiting support (configurable)
 - SQL injection prevention with Prisma ORM
+
+### 💳 Payment Integration (Midtrans)
+- Snap transaction creation from server-side with validated payloads
+- Signature verification for payment notifications (callbacks)
+- Automatic booking confirmation/cancellation based on payment status
+- On failure/expire/cancel, tickets are released back to availability
 
 ## 🛠️ Tech Stack
 
@@ -134,6 +141,10 @@ NODE_ENV=development
 # Optional: Rate Limiting
 THROTTLE_TTL=60
 THROTTLE_LIMIT=100
+
+# Midtrans (Sandbox or Production keys)
+MIDTRANS_SERVER_KEY="SB-Mid-server-xxxxxxxxxxxxxxxxxxxx"
+MIDTRANS_CLIENT_KEY="SB-Mid-client-xxxxxxxxxxxxxxxxxxxx"
 ```
 
 ### Environment Variables Explained
@@ -145,6 +156,8 @@ THROTTLE_LIMIT=100
 | `refreshSecretKey` | Secret key for refresh token signing | Yes | - |
 | `PORT` | Application port | No | 8000 |
 | `NODE_ENV` | Environment mode | No | development |
+| `MIDTRANS_SERVER_KEY` | Midtrans server key used for Snap + signature | Yes | - |
+| `MIDTRANS_CLIENT_KEY` | Midtrans client key (exposed to frontend) | Yes | - |
 
 ## 🗄️ Database Setup
 
@@ -237,6 +250,49 @@ curl -X GET http://localhost:8000/event/1/ticket-classes
 
 For complete API documentation, see [API_DOCUMENTATION.md](./API_DOCUMENTATION.md)
 
+### Payments (Midtrans) – Examples
+
+1) Create a payment and get Snap token (server creates order_id)
+```bash
+curl -X POST http://localhost:8000/payment/create \
+  -H "Authorization: Bearer <your_jwt_token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "bookingId": 123
+  }'
+# Response contains { token, redirect_url, order_id }
+```
+
+2) Midtrans callback/notification (handled by backend)
+```http
+POST /payment/callback
+Content-Type: application/json
+
+{
+  "order_id": "ORDER-<timestamp>-<rand>",
+  "transaction_status": "settlement|capture|pending|expire|cancel|deny|failure",
+  "status_code": "200",
+  "gross_amount": "100000.00",
+  "signature_key": "<computed by Midtrans>"
+}
+```
+The backend validates `signature_key` using `MIDTRANS_SERVER_KEY` and then:
+- Confirms booking on success (settlement/capture)
+- Cancels booking and releases tickets on cancel/expire/failure
+- Keeps or creates a pending booking on pending
+
+3) Check payment status
+```bash
+curl -X GET "http://localhost:8000/payment/status?order_id=ORDER-..." \
+  -H "Authorization: Bearer <your_jwt_token>"
+```
+
+4) Cancel a booking
+```bash
+curl -X POST http://localhost:8000/booking/123/cancel \
+  -H "Authorization: Bearer <your_jwt_token>"
+```
+
 ## 📁 Project Structure
 
 ```
@@ -261,6 +317,10 @@ src/
 ├── booking/             # Booking management module
 │   ├── booking.controller.ts
 │   ├── booking.service.ts
+│   └── dtos/
+├── payment/             # Payment integration (Midtrans)
+│   ├── payment.controller.ts
+│   ├── payment.service.ts
 │   └── dtos/
 ├── common/              # Shared utilities
 │   ├── filters/        # Exception filters
@@ -340,6 +400,9 @@ DATABASE_URL="postgresql://..."
 jwtSecretKey="production-secret-key"
 refreshSecretKey="production-refresh-key"
 PORT=8000
+# Midtrans production keys
+MIDTRANS_SERVER_KEY="Mid-server-xxxxxxxxxxxxxxxxxxxx"
+MIDTRANS_CLIENT_KEY="Mid-client-xxxxxxxxxxxxxxxxxxxx"
 ```
 
 ### Docker Deployment (Optional)
@@ -404,4 +467,4 @@ If you encounter any issues or have questions:
 
 **Built with ❤️ using NestJS and Prisma**
 
-*Last updated: January 2025*
+*Last updated: August 2025*
