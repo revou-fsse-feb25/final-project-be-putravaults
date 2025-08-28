@@ -32,12 +32,6 @@ export class BookingRepository implements IBookingRepository {
         });
     }
 
-    async getBookingByPaymentId(paymentId: string): Promise<Booking | null> {
-        return this.prisma.booking.findUnique({
-            where: { paymentId }
-        });
-    }
-
     async updateBooking(id: number, updateBookingDto: UpdateBookingDto): Promise<Booking> {
         return this.prisma.booking.update({
             where: { id },
@@ -160,7 +154,7 @@ export class BookingRepository implements IBookingRepository {
         });
     }
 
-    async getBookingByOrderId(paymentId: string): Promise<any> {
+    async getBookingByPaymentId(paymentId: string): Promise<any> {
         return this.prisma.booking.findUnique({
             where: { paymentId },
             include: {

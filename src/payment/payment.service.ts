@@ -188,21 +188,43 @@ export class PaymentService {
         // Create booking and confirm it
         if (bookingDetails) {
           await this.bookingRepository.confirmBookingByPaymentId(paymentId);
+          // Set related tickets to SOLD
+          const booking = await this.bookingRepository.getBookingByPaymentId(paymentId);
+          if (booking?.tickets?.length) {
+            const ticketIds = booking.tickets.map((t: any) => t.id);
+            await this.ticketRepository.updateTicketsStatus(ticketIds, 'SOLD');
+          }
         }
       } else if (fraud_status === 'reject') {
+        // Cancel booking and release tickets
+        const booking = await this.bookingRepository.getBookingByPaymentId(paymentId);
         await this.bookingRepository.cancelBookingByPaymentId(paymentId);
+        if (booking?.id) {
+          await this.bookingRepository.releaseTicketsFromBooking(booking.id);
+        }
         // Payment rejected - no booking created
         console.log(`Payment rejected for order: ${paymentId}`);
       }
     } else if (transaction_status === 'settlement') {
       // Payment successful - create booking
       await this.bookingRepository.confirmBookingByPaymentId(paymentId);
+      // Set related tickets to SOLD
+      const booking = await this.bookingRepository.getBookingByPaymentId(paymentId);
+      if (booking?.tickets?.length) {
+        const ticketIds = booking.tickets.map((t: any) => t.id);
+        await this.ticketRepository.updateTicketsStatus(ticketIds, 'SOLD');
+      }
     } else if (
       transaction_status === 'deny' ||
       transaction_status === 'expire' ||
       transaction_status === 'cancel'
     ) {
-      this.bookingRepository.cancelBookingByPaymentId(paymentId);
+      // Cancel booking and release tickets back to AVAILABLE
+      const booking = await this.bookingRepository.getBookingByPaymentId(paymentId);
+      await this.bookingRepository.cancelBookingByPaymentId(paymentId);
+      if (booking?.id) {
+        await this.bookingRepository.releaseTicketsFromBooking(booking.id);
+      }
       console.log(`Payment failed for order: ${order_id}`);
     } else if (transaction_status === 'pending') {
       if (bookingDetails) {
@@ -261,7 +283,7 @@ export class PaymentService {
         );
 
         // Update ticket status based on payment status
-        const ticketStatus = status === 'CONFIRMED' ? 'SOLD' : 'AVAILABLE';
+        const ticketStatus = status === 'PENDING' ? 'RESERVED': 'AVAILABLE';
         await this.ticketRepository.updateTicketsStatus(
           ticketIds,
           ticketStatus,
