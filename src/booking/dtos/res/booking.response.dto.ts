@@ -24,5 +24,6 @@ export interface BookingResponseDto {
     totalAmount: number;
     createdAt: string;
     updatedAt: string;
+    paymentId?: string;
     tickets: BookingTicketDto[];
 }

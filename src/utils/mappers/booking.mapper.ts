@@ -37,6 +37,7 @@ export class BookingMapper {
             id: booking.id,
             userId: booking.userId,
             status: booking.status,
+            paymentId: booking.paymentId || undefined,
             totalAmount,
             createdAt: booking.createdAt.toISOString(),
             updatedAt: booking.updatedAt.toISOString(),
