@@ -9,11 +9,11 @@ import { IBookingRepository } from './interfaces/booking-repository.interface';
 export class BookingRepository implements IBookingRepository {
     constructor(private readonly prisma: PrismaService) {}
 
-    async createBooking(userId: number, orderId?: string): Promise<Booking> {
+    async createBooking(userId: number, paymentId?: string): Promise<Booking> {
         return this.prisma.booking.create({
             data: {
                 userId: userId,
-                orderId: orderId,
+                paymentId,
                 status: BookingStatus.PENDING,
             },
         });
@@ -32,9 +32,22 @@ export class BookingRepository implements IBookingRepository {
         });
     }
 
+    async getBookingByPaymentId(paymentId: string): Promise<Booking | null> {
+        return this.prisma.booking.findUnique({
+            where: { paymentId }
+        });
+    }
+
     async updateBooking(id: number, updateBookingDto: UpdateBookingDto): Promise<Booking> {
         return this.prisma.booking.update({
             where: { id },
+            data: updateBookingDto,
+        });
+    }
+
+    async updateBookingByPaymentId(paymentId: string, updateBookingDto: UpdateBookingDto): Promise<Booking> {
+        return this.prisma.booking.update({
+            where: { paymentId },
             data: updateBookingDto,
         });
     }
@@ -49,9 +62,29 @@ export class BookingRepository implements IBookingRepository {
         });
     }
 
+    async cancelBookingByPaymentId(paymentId: string): Promise<Booking> {
+        return this.prisma.booking.update({
+            where: { paymentId },
+            data: { 
+                status: BookingStatus.CANCELLED,
+                updatedAt: new Date(),
+            },
+        });
+    }
+
     async confirmBooking(id: number): Promise<Booking> {
         return this.prisma.booking.update({
             where: { id },
+            data: { 
+                status: BookingStatus.CONFIRMED,
+                updatedAt: new Date(),
+            },
+        });
+    }
+
+    async confirmBookingByPaymentId(paymentId: string): Promise<Booking> {
+        return this.prisma.booking.update({
+            where: { paymentId },
             data: { 
                 status: BookingStatus.CONFIRMED,
                 updatedAt: new Date(),
@@ -127,9 +160,9 @@ export class BookingRepository implements IBookingRepository {
         });
     }
 
-    async getBookingByOrderId(orderId: string): Promise<any> {
+    async getBookingByOrderId(paymentId: string): Promise<any> {
         return this.prisma.booking.findUnique({
-            where: { orderId: orderId },
+            where: { paymentId },
             include: {
                 tickets: {
                     include: {

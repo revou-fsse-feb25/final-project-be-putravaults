@@ -116,7 +116,7 @@ enum BookingStatus {
 
 model Booking {
   id        Int           @id @default(autoincrement())
-  orderId   String?       @unique // Unique order ID from frontend (optional)
+  paymentId   String?       @unique // Unique order ID from frontend (optional)
   userId    Int
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt

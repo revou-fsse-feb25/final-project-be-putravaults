@@ -86,7 +86,10 @@ export class PaymentService {
     }
   }
 
-  async createPaymentWithBookingData(createPaymentDto: CreatePaymentDto, bookingData: any) {
+  async createPaymentWithBookingData(
+    createPaymentDto: CreatePaymentDto,
+    bookingData: any,
+  ) {
     try {
       // Generate order ID on backend
       const orderId = this.generateOrderId();
@@ -125,7 +128,7 @@ export class PaymentService {
           email: createPaymentDto.customerEmail,
         },
         item_details: createPaymentDto.itemDetails,
-        custom_field1: JSON.stringify(bookingData), // Store booking data for later processing
+        booking_details: JSON.stringify(bookingData), // Store booking data for later processing
       };
 
       const token = await this.snap.createTransaction(payment);
@@ -150,8 +153,10 @@ export class PaymentService {
       status_code,
       gross_amount,
       signature_key,
-      custom_field1,
+      booking_details,
     } = paymentCallbackRequestDto;
+
+    const paymentId = order_id;
 
     const hash = crypto
       .createHash('sha512')
@@ -165,85 +170,109 @@ export class PaymentService {
     }
 
     // Parse booking data from custom_field1
-    let bookingData = null;
-    if (custom_field1) {
+    let bookingDetails = null;
+    if (booking_details) {
       try {
-        bookingData = JSON.parse(custom_field1);
+        bookingDetails = JSON.parse(booking_details);
       } catch (error) {
-        console.error('Failed to parse booking data from custom_field1:', error);
+        console.error(
+          'Failed to parse booking data from custom_field1:',
+          error,
+        );
       }
     }
+
     if (transaction_status === 'capture') {
       if (fraud_status === 'accept') {
         // Create booking and confirm it
-        if (bookingData) {
-          await this.createBookingFromPaymentData(bookingData, order_id, 'CONFIRMED');
-
+        if (bookingDetails) {
+          await this.bookingRepository.confirmBookingByPaymentId(paymentId);
         }
       } else if (fraud_status === 'reject') {
-        await this.bookingRepository.cancelBooking(orderId);
+        await this.bookingRepository.cancelBookingByPaymentId(paymentId);
         // Payment rejected - no booking created
-        console.log(`Payment rejected for order: ${order_id}`);
+        console.log(`Payment rejected for order: ${paymentId}`);
       }
     } else if (transaction_status === 'settlement') {
       // Payment successful - create booking
-      if (bookingData) {
-        await this.createBookingFromPaymentData(bookingData, order_id, 'CONFIRMED');
-      }
+      await this.bookingRepository.confirmBookingByPaymentId(paymentId);
     } else if (
       transaction_status === 'deny' ||
       transaction_status === 'expire' ||
       transaction_status === 'cancel'
     ) {
-      this.bookingRepository.cancelBooking(orderId);
+      this.bookingRepository.cancelBookingByPaymentId(paymentId);
       console.log(`Payment failed for order: ${order_id}`);
     } else if (transaction_status === 'pending') {
-      const existingBooking = await this.bookingRepository.getBookingByOrderId(orderId);
-      //create booking if not exist
-      if (!existingBooking) {
-        await this.bookingRepository.createBooking(orderId);
-        console.log(`Created booking for pending order: ${order_id}`);
+      if (bookingDetails) {
+        const existingBooking =
+          await this.bookingRepository.getBookingByPaymentId(paymentId)
+        //create booking if not exist
+        if (!existingBooking) {
+          await this.createBookingFromPaymentData(
+            bookingDetails,
+            paymentId,
+            'PENDING',
+          );
+          console.log(`Created booking for pending order: ${paymentId}`);
+        }
       }
     }
 
     return console.log('Payment callback handled successfully');
   }
 
-  private async createBookingFromPaymentData(bookingData: any, orderId: string, status: string) {
+  private async createBookingFromPaymentData(
+    bookingDetails: any,
+    paymentId: string,
+    status: string,
+  ) {
     try {
       // Create the booking with orderId
-      const booking = await this.bookingRepository.createBooking(bookingData.userId, orderId);
+      const booking = await this.bookingRepository.createBooking(
+        bookingDetails.userId,
+        paymentId,
+      );
 
       // Process each ticket booking item
-      for (const ticketItem of bookingData.tickets) {
+      for (const ticketItem of bookingDetails.tickets) {
         // Get available tickets for this ticket class
-        const availableTickets = await this.ticketRepository.getAvailableTicketsByTicketClass(
-          ticketItem.ticketClassId
-        );
+        const availableTickets =
+          await this.ticketRepository.getAvailableTicketsByTicketClass(
+            ticketItem.ticketClassId,
+          );
 
         // Check if we have enough tickets
         if (availableTickets.length < ticketItem.quantity) {
           throw new Error(
-            `Insufficient tickets for ticket class ${ticketItem.ticketClassId}. Available: ${availableTickets.length}, Requested: ${ticketItem.quantity}`
+            `Insufficient tickets for ticket class ${ticketItem.ticketClassId}. Available: ${availableTickets.length}, Requested: ${ticketItem.quantity}`,
           );
         }
 
         // Take the first N available tickets
         const ticketsToBook = availableTickets.slice(0, ticketItem.quantity);
-        const ticketIds = ticketsToBook.map(ticket => ticket.id);
+        const ticketIds = ticketsToBook.map((ticket) => ticket.id);
 
         // Update tickets to reference this booking
-        await this.bookingRepository.updateTicketsBookingId(ticketIds, booking.id);
-        
+        await this.bookingRepository.updateTicketsBookingId(
+          ticketIds,
+          booking.id,
+        );
+
         // Update ticket status based on payment status
         const ticketStatus = status === 'CONFIRMED' ? 'SOLD' : 'AVAILABLE';
-        await this.ticketRepository.updateTicketsStatus(ticketIds, ticketStatus);
+        await this.ticketRepository.updateTicketsStatus(
+          ticketIds,
+          ticketStatus,
+        );
       }
 
       // Update booking status
       await this.bookingRepository.updateBookingStatus(booking.id, status);
 
-      console.log(`Booking created successfully: ${booking.id} for order: ${orderId}`);
+      console.log(
+        `Booking created successfully: ${booking.id} for order: ${paymentId}`,
+      );
     } catch (error) {
       console.error('Failed to create booking from payment data:', error);
       throw error;
