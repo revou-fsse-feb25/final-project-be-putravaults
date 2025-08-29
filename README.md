@@ -32,6 +32,18 @@ Concerto Backend is a comprehensive REST API for a concert ticket booking platfo
 - **Payments (Midtrans)**: Snap token creation, payment notifications (callbacks), and status checks
 - **Admin Dashboard**: Administrative tools for event and user management
 
+## 🗄️ Database Schema (ERD)
+
+![Database Entity Relationship Diagram](./erd_documentation/erd-diagram.png)
+
+The database schema includes the following main entities:
+- **Users**: Authentication and user management
+- **Events**: Concert events with images and details
+- **Ticket Classes**: Different ticket categories (VIP, Premium, General, etc.)
+- **Tickets**: Individual tickets with status tracking
+- **Bookings**: User reservations with payment integration
+- **Event Images**: Multiple images per event with ordering
+
 ## ✨ Features
 
 ### 🔐 Authentication & Authorization
